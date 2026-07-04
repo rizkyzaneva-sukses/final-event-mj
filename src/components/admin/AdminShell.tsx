@@ -332,7 +332,7 @@ export default function AdminShell({ user, children }: AdminShellProps) {
               <span className="sidebar-brand-icon">⚡</span>
               Muda Juara
             </div>
-            <div className="sidebar-brand-sub">Finance Management</div>
+            <div className="sidebar-brand-sub">Event Management</div>
           </div>
 
           <nav className="sidebar-nav">

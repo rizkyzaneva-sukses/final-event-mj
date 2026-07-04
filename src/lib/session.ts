@@ -11,7 +11,7 @@ export interface SessionData {
 
 const sessionOptions = {
   password: process.env.IRON_SESSION_PASSWORD as string,
-  cookieName: "mj-finance-session",
+  cookieName: "event-mj-session",
   cookieOptions: {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

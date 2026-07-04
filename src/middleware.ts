@@ -5,7 +5,7 @@ export function middleware(request: NextRequest) {
 
   // Admin routes require auth — check for session cookie
   if (pathname.startsWith("/admin")) {
-    const sessionCookie = request.cookies.get("mj-finance-session");
+    const sessionCookie = request.cookies.get("event-mj-session");
     if (!sessionCookie) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);

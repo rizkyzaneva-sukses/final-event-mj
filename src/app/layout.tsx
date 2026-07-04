@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Muda Juara Finance",
+  title: "Event Muda Juara",
   description: "Platform pendaftaran event & manajemen member Muda Juara",
 };
 

@@ -1,5 +1,5 @@
 /**
- * Cloudinary helpers for Muda Juara Finance
+ * Cloudinary helpers for Event Muda Juara
  * 
  * Upload strategy: Signed upload via API route.
  * File naming convention: {eventSlug}/{noWa}_{namaPendaftar}

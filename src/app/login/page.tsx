@@ -116,7 +116,7 @@ export default function LoginPage() {
       <div className="login-container">
         <div className="login-logo">
           <div className="login-logo-icon">⚡</div>
-          <h1>Muda Juara Finance</h1>
+          <h1>Event Muda Juara</h1>
           <p>Admin Panel</p>
         </div>
 
@@ -177,7 +177,7 @@ export default function LoginPage() {
         </div>
 
         <div className="login-footer">
-          Muda Juara Finance v1.0
+          Event Muda Juara v1.0
         </div>
       </div>
     </div>

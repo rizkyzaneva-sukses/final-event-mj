@@ -581,7 +581,7 @@ export default function RegistrationPage() {
               )}
 
               <div style={{ fontSize: "0.8125rem", color: "var(--public-text-muted)" }}>
-                Muda Juara Finance
+                Event Muda Juara
               </div>
             </div>
           )}
