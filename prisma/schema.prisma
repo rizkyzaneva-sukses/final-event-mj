@@ -1,0 +1,235 @@
+// Muda Juara Finance — Prisma Schema
+// Naming: Model = PascalCase, field = camelCase, enum value = UPPER_SNAKE_CASE
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// === Enums ===
+
+enum StatusKeanggotaan {
+  MEMBER
+  UMUM
+}
+
+enum HubunganTanggungan {
+  PASANGAN
+  ANAK
+  LAINNYA
+}
+
+enum TipeAudiens {
+  MEMBER_ONLY
+  UMUM
+  KEDUANYA
+}
+
+enum StatusPembayaran {
+  BELUM_BAYAR
+  BELUM_DIVERIFIKASI
+  TERVERIFIKASI
+}
+
+enum RoleAdmin {
+  SDM
+  MENKEU
+  KEMENTERIAN
+  BENDAHARA
+}
+
+// === Models ===
+
+model Member {
+  id                String             @id @default(uuid())
+  nama              String             @db.VarChar(100)
+  noWa              String             @unique @db.VarChar(20)
+  domisili          String             @default("") @db.VarChar(100)
+  email             String?            @db.VarChar(100)
+  angkatanMj        String?            @db.VarChar(20)
+  statusKeanggotaan StatusKeanggotaan  @default(UMUM)
+
+  // Relations
+  tanggungan        Tanggungan[]
+  registrasi        Registrasi[]
+  registrasiPeserta RegistrasiPeserta[] @relation("MemberPeserta")
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([nama])
+  @@map("member")
+}
+
+model Tanggungan {
+  id            String              @id @default(uuid())
+  memberId      String
+  nama          String              @db.VarChar(100)
+  tanggalLahir  DateTime?           @db.Date
+  hubungan      HubunganTanggungan
+
+  // Relations
+  member        Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  registrasiPeserta RegistrasiPeserta[] @relation("TanggunganPeserta")
+
+  createdAt     DateTime            @default(now())
+
+  @@index([memberId])
+  @@map("tanggungan")
+}
+
+model Kementerian {
+  id        String   @id @default(uuid())
+  nama      String   @db.VarChar(100)
+  kodeUnik  String   @unique @db.VarChar(4)
+
+  // Relations
+  event     Event[]
+  adminUser AdminUser[]
+
+  createdAt DateTime @default(now())
+
+  @@map("kementerian")
+}
+
+model Event {
+  id             String       @id @default(uuid())
+  kementerianId  String
+  nama           String       @db.VarChar(200)
+  slug           String       @unique @db.VarChar(100)
+  deskripsi      String?      @db.Text
+  tanggalMulai   DateTime     @db.Date
+  tanggalSelesai DateTime     @db.Date
+  lokasi         String       @default("") @db.VarChar(200)
+  tipeAudiens    TipeAudiens  @default(KEDUANYA)
+  isBerbayar     Boolean      @default(false)
+  kodeProgram    String       @default("") @db.VarChar(4) // 2-digit program code for kode unik
+  isActive       Boolean      @default(true)
+
+  // Relations
+  kementerian    Kementerian  @relation(fields: [kementerianId], references: [id])
+  hargaTier      HargaTier[]
+  registrasi     Registrasi[]
+  bendaharaAssignment BendaharaAssignment[]
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([kementerianId])
+  @@index([isActive])
+  @@map("event")
+}
+
+model HargaTier {
+  id        String @id @default(uuid())
+  eventId   String
+  kategori  String @db.VarChar(50)  // e.g. "Dewasa", "Anak 6+", "Balita 3-5"
+  harga     Int                      // IDR, no decimals needed
+  usiaMin   Int?                     // minimum age (inclusive), null = no lower bound
+  usiaMax   Int?                     // maximum age (inclusive), null = no upper bound
+  urutan    Int    @default(0)       // display order
+
+  // Relations
+  event     Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
+  @@map("harga_tier")
+}
+
+model Registrasi {
+  id        String   @id @default(uuid())
+  eventId   String
+  memberId  String
+  statusOts Boolean  @default(false)
+
+  // Relations
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  member    Member   @relation(fields: [memberId], references: [id])
+  peserta   RegistrasiPeserta[]
+  pembayaran Pembayaran?
+
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, memberId]) // satu Member hanya bisa daftar sekali per Event
+  @@index([eventId])
+  @@index([memberId])
+  @@map("registrasi")
+}
+
+model RegistrasiPeserta {
+  id            String  @id @default(uuid())
+  registrasiId  String
+  memberId      String?      // filled if the member themselves participates
+  tanggunganId  String?      // filled if a dependent participates
+  hargaTierId   String?      // linked tier for billing
+
+  // Relations
+  registrasi    Registrasi   @relation(fields: [registrasiId], references: [id], onDelete: Cascade)
+  member        Member?      @relation("MemberPeserta", fields: [memberId], references: [id])
+  tanggungan    Tanggungan?  @relation("TanggunganPeserta", fields: [tanggunganId], references: [id])
+
+  @@index([registrasiId])
+  @@map("registrasi_peserta")
+}
+
+model Pembayaran {
+  id               String           @id @default(uuid())
+  registrasiId     String           @unique
+  jumlahTagihan    Int
+  kodeUnik         String           @db.VarChar(10)
+  status           StatusPembayaran @default(BELUM_BAYAR)
+  buktiTransferUrl String?          @db.Text
+  noReferensi      String?          @db.VarChar(50)
+  verifiedBy       String?          // adminUserId who verified
+  verifiedAt       DateTime?
+
+  // Relations
+  registrasi       Registrasi       @relation(fields: [registrasiId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([kodeUnik])
+  @@index([status])
+  @@map("pembayaran")
+}
+
+model AdminUser {
+  id             String    @id @default(uuid())
+  nama           String    @db.VarChar(100)
+  email          String    @unique @db.VarChar(100)
+  passwordHash   String    @db.VarChar(255)
+  role           RoleAdmin
+  kementerianId  String?
+
+  // Relations
+  kementerian    Kementerian? @relation(fields: [kementerianId], references: [id])
+  bendaharaAssignment BendaharaAssignment[]
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([role])
+  @@map("admin_user")
+}
+
+model BendaharaAssignment {
+  id          String @id @default(uuid())
+  eventId     String
+  adminUserId String
+
+  // Relations
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+
+  @@unique([eventId, adminUserId])
+  @@map("bendahara_assignment")
+}
