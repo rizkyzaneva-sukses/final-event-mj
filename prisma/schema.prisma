@@ -2,12 +2,12 @@
 // Naming: Model = PascalCase, field = camelCase, enum value = UPPER_SNAKE_CASE
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // === Enums ===
