@@ -10,6 +10,52 @@ const prisma = new PrismaClient({
 async function main() {
   console.log("🌱 Seeding database...");
 
+  const ensureHargaTier = async (
+    eventId: string,
+    data: Array<{
+      kategori: string;
+      harga: number;
+      usiaMin: number | null;
+      usiaMax: number | null;
+      urutan: number;
+    }>
+  ) => {
+    const existingCount = await prisma.hargaTier.count({
+      where: { eventId },
+    });
+
+    if (existingCount > 0) return;
+
+    await prisma.hargaTier.createMany({
+      data: data.map((item) => ({
+        eventId,
+        ...item,
+      })),
+    });
+  };
+
+  const ensureTanggungan = async (
+    memberId: string,
+    data: Array<{
+      nama: string;
+      tanggalLahir: Date;
+      hubungan: "PASANGAN" | "ANAK" | "LAINNYA";
+    }>
+  ) => {
+    const existingCount = await prisma.tanggungan.count({
+      where: { memberId },
+    });
+
+    if (existingCount > 0) return;
+
+    await prisma.tanggungan.createMany({
+      data: data.map((item) => ({
+        memberId,
+        ...item,
+      })),
+    });
+  };
+
   // === Kementerian ===
   const kemSDM = await prisma.kementerian.upsert({
     where: { kodeUnik: "01" },
@@ -99,43 +145,36 @@ async function main() {
   });
 
   // Harga tier for RAHMA
-  await prisma.hargaTier.createMany({
-    data: [
-      {
-        eventId: eventRahma.id,
-        kategori: "Dewasa",
-        harga: 50000,
-        usiaMin: 13,
-        usiaMax: null,
-        urutan: 1,
-      },
-      {
-        eventId: eventRahma.id,
-        kategori: "Anak 6-12 tahun",
-        harga: 30000,
-        usiaMin: 6,
-        usiaMax: 12,
-        urutan: 2,
-      },
-      {
-        eventId: eventRahma.id,
-        kategori: "Balita 3-5 tahun",
-        harga: 15000,
-        usiaMin: 3,
-        usiaMax: 5,
-        urutan: 3,
-      },
-      {
-        eventId: eventRahma.id,
-        kategori: "Balita < 3 tahun",
-        harga: 0,
-        usiaMin: 0,
-        usiaMax: 2,
-        urutan: 4,
-      },
-    ],
-    skipDuplicates: true,
-  });
+  await ensureHargaTier(eventRahma.id, [
+    {
+      kategori: "Dewasa",
+      harga: 50000,
+      usiaMin: 13,
+      usiaMax: null,
+      urutan: 1,
+    },
+    {
+      kategori: "Anak 6-12 tahun",
+      harga: 30000,
+      usiaMin: 6,
+      usiaMax: 12,
+      urutan: 2,
+    },
+    {
+      kategori: "Balita 3-5 tahun",
+      harga: 15000,
+      usiaMin: 3,
+      usiaMax: 5,
+      urutan: 3,
+    },
+    {
+      kategori: "Balita < 3 tahun",
+      harga: 0,
+      usiaMin: 0,
+      usiaMax: 2,
+      urutan: 4,
+    },
+  ]);
 
   const eventNgopi = await prisma.event.upsert({
     where: { slug: "ngopi-bisnis-juli-2026" },
@@ -174,35 +213,29 @@ async function main() {
   });
 
   // Harga tier for Mabit (different structure from RAHMA)
-  await prisma.hargaTier.createMany({
-    data: [
-      {
-        eventId: eventMabit.id,
-        kategori: "Dewasa",
-        harga: 150000,
-        usiaMin: 13,
-        usiaMax: null,
-        urutan: 1,
-      },
-      {
-        eventId: eventMabit.id,
-        kategori: "Anak",
-        harga: 75000,
-        usiaMin: 3,
-        usiaMax: 12,
-        urutan: 2,
-      },
-      {
-        eventId: eventMabit.id,
-        kategori: "Sewa Tenda",
-        harga: 100000,
-        usiaMin: null,
-        usiaMax: null,
-        urutan: 3,
-      },
-    ],
-    skipDuplicates: true,
-  });
+  await ensureHargaTier(eventMabit.id, [
+    {
+      kategori: "Dewasa",
+      harga: 150000,
+      usiaMin: 13,
+      usiaMax: null,
+      urutan: 1,
+    },
+    {
+      kategori: "Anak",
+      harga: 75000,
+      usiaMin: 3,
+      usiaMax: 12,
+      urutan: 2,
+    },
+    {
+      kategori: "Sewa Tenda",
+      harga: 100000,
+      usiaMin: null,
+      usiaMax: null,
+      urutan: 3,
+    },
+  ]);
 
   console.log("✅ Events seeded:", eventRahma.nama, eventNgopi.nama, eventMabit.nama);
 
@@ -221,29 +254,23 @@ async function main() {
   });
 
   // Add tanggungan
-  await prisma.tanggungan.createMany({
-    data: [
-      {
-        memberId: member1.id,
-        nama: "Siti Fatimah",
-        tanggalLahir: new Date("1992-05-15"),
-        hubungan: "PASANGAN",
-      },
-      {
-        memberId: member1.id,
-        nama: "Aisyah Fauzi",
-        tanggalLahir: new Date("2018-08-20"),
-        hubungan: "ANAK",
-      },
-      {
-        memberId: member1.id,
-        nama: "Umar Fauzi",
-        tanggalLahir: new Date("2021-03-10"),
-        hubungan: "ANAK",
-      },
-    ],
-    skipDuplicates: true,
-  });
+  await ensureTanggungan(member1.id, [
+    {
+      nama: "Siti Fatimah",
+      tanggalLahir: new Date("1992-05-15"),
+      hubungan: "PASANGAN",
+    },
+    {
+      nama: "Aisyah Fauzi",
+      tanggalLahir: new Date("2018-08-20"),
+      hubungan: "ANAK",
+    },
+    {
+      nama: "Umar Fauzi",
+      tanggalLahir: new Date("2021-03-10"),
+      hubungan: "ANAK",
+    },
+  ]);
 
   const member2 = await prisma.member.upsert({
     where: { noWa: "6289876543210" },

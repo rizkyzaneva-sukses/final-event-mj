@@ -57,6 +57,18 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Login error:", error);
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2021"
+    ) {
+      return NextResponse.json(
+        { error: "Database belum siap. Coba lagi beberapa saat setelah deploy." },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Terjadi kesalahan server" },
       { status: 500 }
