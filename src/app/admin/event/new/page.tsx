@@ -14,12 +14,14 @@ export default function NewEventPage() {
   const [kementerianList, setKementerianList] = useState<Kementerian[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   // Form state
   const [kementerianId, setKementerianId] = useState("");
   const [nama, setNama] = useState("");
   const [slug, setSlug] = useState("");
   const [deskripsi, setDeskripsi] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [tanggalMulai, setTanggalMulai] = useState("");
   const [tanggalSelesai, setTanggalSelesai] = useState("");
   const [lokasi, setLokasi] = useState("");
@@ -47,6 +49,51 @@ export default function NewEventPage() {
     setSlug(generated);
   }, [nama]);
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setError("");
+    try {
+      // 1) Get signed params from /api/cloudinary/sign
+      const signRes = await fetch("/api/cloudinary/sign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventSlug: slug || "new-event",
+          noWa: "banner",
+          nama: nama || "event-banner",
+        }),
+      });
+      const signData = await signRes.json();
+      if (!signRes.ok) throw new Error(signData.error || "Gagal mendapatkan signature");
+
+      // 2) Upload file directly to Cloudinary
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("api_key", signData.apiKey);
+      formData.append("timestamp", signData.timestamp.toString());
+      formData.append("signature", signData.signature);
+      formData.append("folder", signData.folder);
+      formData.append("public_id", signData.publicId);
+
+      const uploadRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${signData.cloudName}/image/upload`,
+        { method: "POST", body: formData }
+      );
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok) throw new Error(uploadData.error?.message || "Gagal upload gambar");
+
+      // 3) Store the resulting URL
+      setImageUrl(uploadData.secure_url);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal upload gambar");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -61,6 +108,7 @@ export default function NewEventPage() {
           nama,
           slug,
           deskripsi: deskripsi || undefined,
+          imageUrl: imageUrl || undefined,
           tanggalMulai,
           tanggalSelesai: tanggalSelesai || tanggalMulai,
           lokasi,
@@ -119,6 +167,53 @@ export default function NewEventPage() {
           <div className="form-group">
             <label className="input-label">Deskripsi</label>
             <textarea className="input" rows={3} placeholder="Deskripsi event (opsional)" value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} style={{ resize: "vertical" }} />
+          </div>
+
+          <div className="form-group">
+            <label className="input-label">Banner Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              className="input"
+              onChange={handleImageUpload}
+              disabled={uploading}
+              style={{ padding: "8px 0" }}
+            />
+            {uploading && (
+              <p style={{ fontSize: "0.8125rem", color: "var(--admin-accent)", marginTop: "6px" }}>
+                ⏳ Mengunggah gambar...
+              </p>
+            )}
+            {imageUrl && (
+              <div style={{ marginTop: "8px" }}>
+                <img
+                  src={imageUrl}
+                  alt="Banner preview"
+                  style={{
+                    width: "100%",
+                    maxHeight: "200px",
+                    objectFit: "cover",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid var(--admin-border)",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setImageUrl("")}
+                  style={{
+                    marginTop: "6px",
+                    fontSize: "0.75rem",
+                    color: "var(--admin-danger)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
+                >
+                  ✕ Hapus gambar
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="form-row" style={{ marginBottom: "20px" }}>

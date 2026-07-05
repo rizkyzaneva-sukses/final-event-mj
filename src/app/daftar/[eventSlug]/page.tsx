@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 
 interface EventData {
@@ -16,6 +16,7 @@ interface EventData {
   kodeProgram: string;
   kementerian: { nama: string; kodeUnik: string };
   hargaTier: { id: string; kategori: string; harga: number; usiaMin: number | null; usiaMax: number | null }[];
+  imageUrl: string | null;
 }
 
 interface MemberData {
@@ -84,6 +85,9 @@ export default function RegistrationPage() {
   const [uploadingPayment, setUploadingPayment] = useState(false);
   const [paymentDone, setPaymentDone] = useState(false);
 
+  // Accordion state for landing page
+  const [openAccordion, setOpenAccordion] = useState<string | null>(null);
+
   // Load event data
   useEffect(() => {
     async function loadEvent() {
@@ -104,6 +108,26 @@ export default function RegistrationPage() {
     }
     loadEvent();
   }, [eventSlug]);
+
+  // Scroll to top when step changes away from 'wa'
+  useEffect(() => {
+    if (step !== "wa") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [step]);
+
+  // Toggle accordion
+  const toggleAccordion = useCallback((section: string) => {
+    setOpenAccordion((prev) => (prev === section ? null : section));
+  }, []);
+
+  // Scroll to form section
+  const scrollToForm = useCallback(() => {
+    const el = document.getElementById("form-section");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
 
   // WA Lookup
   const handleLookup = async () => {
@@ -210,6 +234,17 @@ export default function RegistrationPage() {
     : ["wa", "data", "peserta", "ringkasan", "selesai"];
   const currentStepIndex = allSteps.indexOf(step);
 
+  // Helper: format date range
+  const formatDateRange = (start: string, end: string) => {
+    const s = new Date(start);
+    const e = new Date(end);
+    const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "long", year: "numeric" };
+    if (s.toDateString() === e.toDateString()) {
+      return s.toLocaleDateString("id-ID", { weekday: "long", ...opts });
+    }
+    return `${s.toLocaleDateString("id-ID", opts)} – ${e.toLocaleDateString("id-ID", opts)}`;
+  };
+
   // Loading state
   if (eventLoading) {
     return (
@@ -243,20 +278,414 @@ export default function RegistrationPage() {
     );
   }
 
-  return (
-    <div className="public-page">
-      <div className="public-container">
-        {/* Header */}
-        <div className="public-header">
-          <div style={{ fontSize: "0.8125rem", color: "var(--public-accent)", fontWeight: 600, marginBottom: "8px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-            {event.kementerian.nama} · Muda Juara
+  // Accordion section data
+  const accordionSections = [
+    {
+      id: "deskripsi",
+      title: "Deskripsi",
+      icon: "📋",
+      content: (
+        <div style={{ fontSize: "0.9375rem", color: "var(--public-text-secondary)", lineHeight: 1.7 }}>
+          {event.deskripsi ? (
+            <div dangerouslySetInnerHTML={{ __html: event.deskripsi.replace(/\n/g, "<br/>") }} />
+          ) : (
+            <p style={{ fontStyle: "italic", color: "var(--public-text-muted)" }}>Deskripsi event belum tersedia.</p>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "jadwal",
+      title: "Jadwal & Lokasi",
+      icon: "📅",
+      content: (
+        <div style={{ fontSize: "0.9375rem", color: "var(--public-text-secondary)", lineHeight: 1.8 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "12px" }}>
+            <span style={{ fontSize: "1.125rem", flexShrink: 0 }}>🗓️</span>
+            <div>
+              <div style={{ fontWeight: 500, color: "var(--public-text)", marginBottom: "2px" }}>Tanggal Pelaksanaan</div>
+              <div>{formatDateRange(event.tanggalMulai, event.tanggalSelesai)}</div>
+            </div>
           </div>
-          <h1 className="public-event-name">{event.nama}</h1>
-          <div className="public-event-meta">
-            📅 {new Date(event.tanggalMulai).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-            {event.lokasi && <> · 📍 {event.lokasi}</>}
+          {event.lokasi && (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+              <span style={{ fontSize: "1.125rem", flexShrink: 0 }}>📍</span>
+              <div>
+                <div style={{ fontWeight: 500, color: "var(--public-text)", marginBottom: "2px" }}>Lokasi</div>
+                <div>{event.lokasi}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "harga",
+      title: "Harga / Tarif",
+      icon: "💰",
+      content: (
+        <div style={{ fontSize: "0.9375rem", color: "var(--public-text-secondary)", lineHeight: 1.8 }}>
+          {event.isBerbayar ? (
+            <>
+              <div style={{ marginBottom: "12px" }}>
+                <span style={{
+                  display: "inline-block",
+                  background: "var(--public-warning-bg)",
+                  color: "var(--public-warning)",
+                  padding: "4px 12px",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "0.8125rem",
+                  fontWeight: 600,
+                }}>
+                  💳 Event Berbayar
+                </span>
+              </div>
+              {event.hargaTier && event.hargaTier.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {event.hargaTier.map((tier) => (
+                    <div
+                      key={tier.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "12px 16px",
+                        background: "var(--public-surface)",
+                        borderRadius: "var(--radius-md)",
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 500, color: "var(--public-text)" }}>{tier.kategori}</div>
+                        {tier.usiaMin != null && tier.usiaMax != null && (
+                          <div style={{ fontSize: "0.8125rem", color: "var(--public-text-muted)", marginTop: "2px" }}>
+                            Usia {tier.usiaMin}–{tier.usiaMax} tahun
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontWeight: 700, color: "var(--public-accent)", fontFamily: "var(--font-mono)" }}>
+                        Rp {tier.harga.toLocaleString("id-ID")}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: "var(--public-text-muted)" }}>Informasi harga belum tersedia.</p>
+              )}
+            </>
+          ) : (
+            <div style={{
+              padding: "16px",
+              background: "var(--public-success-bg)",
+              borderRadius: "var(--radius-md)",
+              color: "var(--public-success)",
+              fontWeight: 500,
+              textAlign: "center",
+            }}>
+              ✅ Event ini Gratis (Tanpa Biaya)
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "informasi",
+      title: "Informasi Penting",
+      icon: "ℹ️",
+      content: (
+        <div style={{ fontSize: "0.9375rem", color: "var(--public-text-secondary)", lineHeight: 1.8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+              <span>🏷️</span>
+              <div>
+                <span style={{ color: "var(--public-text-muted)" }}>Kementerian:</span>{" "}
+                <span style={{ fontWeight: 500, color: "var(--public-text)" }}>{event.kementerian.nama}</span>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+              <span>👥</span>
+              <div>
+                <span style={{ color: "var(--public-text-muted)" }}>Tipe Peserta:</span>{" "}
+                <span style={{ fontWeight: 500, color: "var(--public-text)" }}>{event.tipeAudiens}</span>
+              </div>
+            </div>
+            {event.kodeProgram && (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                <span>🔑</span>
+                <div>
+                  <span style={{ color: "var(--public-text-muted)" }}>Kode Program:</span>{" "}
+                  <span style={{
+                    fontFamily: "var(--font-mono)",
+                    fontWeight: 600,
+                    color: "var(--public-accent)",
+                    background: "var(--public-accent-light)",
+                    padding: "2px 8px",
+                    borderRadius: "var(--radius-sm)",
+                  }}>
+                    {event.kodeProgram}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+              <span>📱</span>
+              <div style={{ color: "var(--public-text-muted)" }}>
+                Pendaftaran dilakukan melalui WhatsApp. Pastikan nomor Anda aktif.
+              </div>
+            </div>
           </div>
         </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="public-page">
+      {/* ============ LANDING CONTENT (only when step === 'wa') ============ */}
+      {step === "wa" && (
+        <>
+          {/* Hero Banner */}
+          <div
+            style={{
+              position: "relative",
+              width: "100%",
+              minHeight: "320px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              background: event.imageUrl
+                ? "none"
+                : "linear-gradient(135deg, var(--public-accent) 0%, #1e40af 50%, #1e3a8a 100%)",
+            }}
+          >
+            {event.imageUrl && (
+              <img
+                src={event.imageUrl}
+                alt={event.nama}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            )}
+            {/* Overlay gradient for text readability */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: event.imageUrl
+                  ? "linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.65) 100%)"
+                  : "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.15) 100%)",
+              }}
+            />
+            {/* Banner Content */}
+            <div
+              style={{
+                position: "relative",
+                zIndex: 1,
+                textAlign: "center",
+                padding: "64px 24px 48px",
+                maxWidth: "640px",
+                width: "100%",
+              }}
+            >
+              {/* Kementerian badge */}
+              <div
+                style={{
+                  display: "inline-block",
+                  background: "rgba(255,255,255,0.18)",
+                  backdropFilter: "blur(8px)",
+                  border: "1px solid rgba(255,255,255,0.25)",
+                  padding: "6px 16px",
+                  borderRadius: "50px",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: "#fff",
+                  marginBottom: "16px",
+                }}
+              >
+                {event.kementerian.nama} · Muda Juara
+              </div>
+              {/* Event Name */}
+              <h1
+                style={{
+                  fontSize: "clamp(1.5rem, 5vw, 2.25rem)",
+                  fontWeight: 800,
+                  color: "#fff",
+                  lineHeight: 1.2,
+                  marginBottom: "16px",
+                  textShadow: event.imageUrl ? "0 2px 12px rgba(0,0,0,0.3)" : "none",
+                }}
+              >
+                {event.nama}
+              </h1>
+              {/* Meta info */}
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                  gap: "8px 20px",
+                  fontSize: "0.875rem",
+                  color: "rgba(255,255,255,0.9)",
+                }}
+              >
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                  📅 {formatDateRange(event.tanggalMulai, event.tanggalSelesai)}
+                </span>
+                {event.lokasi && (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                    📍 {event.lokasi}
+                  </span>
+                )}
+              </div>
+            </div>
+            {/* Bottom fade for smooth transition */}
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: "48px",
+                background: "var(--public-bg)",
+                borderRadius: "24px 24px 0 0",
+              }}
+            />
+          </div>
+
+          {/* Accordion Sections */}
+          <div style={{ maxWidth: "640px", margin: "0 auto", padding: "0 16px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
+              {accordionSections.map((section) => {
+                const isOpen = openAccordion === section.id;
+                return (
+                  <div
+                    key={section.id}
+                    style={{
+                      background: "var(--public-bg)",
+                      border: "1px solid var(--public-border)",
+                      borderRadius: "var(--radius-lg)",
+                      overflow: "hidden",
+                      transition: "all 0.2s ease",
+                      boxShadow: isOpen ? "var(--shadow-md)" : "var(--shadow-sm)",
+                    }}
+                  >
+                    {/* Accordion Header */}
+                    <button
+                      onClick={() => toggleAccordion(section.id)}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "16px 20px",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        textAlign: "left",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <span style={{ fontSize: "1.25rem" }}>{section.icon}</span>
+                        <span style={{ fontWeight: 600, fontSize: "0.9375rem", color: "var(--public-text)" }}>
+                          {section.title}
+                        </span>
+                      </div>
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        style={{
+                          transition: "transform 0.2s ease",
+                          transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                          color: "var(--public-text-muted)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <path
+                          d="M5 7.5L10 12.5L15 7.5"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    {/* Accordion Content */}
+                    <div
+                      style={{
+                        maxHeight: isOpen ? "600px" : "0",
+                        opacity: isOpen ? 1 : 0,
+                        overflow: "hidden",
+                        transition: "max-height 0.3s ease, opacity 0.2s ease",
+                        padding: isOpen ? "0 20px 20px" : "0 20px",
+                      }}
+                    >
+                      {section.content}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* CTA Button */}
+            <div style={{ padding: "0 0 32px" }}>
+              <button
+                className="btn-public-primary"
+                onClick={scrollToForm}
+                style={{
+                  width: "100%",
+                  padding: "16px 24px",
+                  fontSize: "1.0625rem",
+                  fontWeight: 700,
+                  borderRadius: "var(--radius-lg)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "10px",
+                  boxShadow: "0 4px 20px rgba(37, 99, 235, 0.35)",
+                }}
+              >
+                Daftar Sekarang
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M10 4V16M10 16L5 11M10 16L15 11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              <p style={{ textAlign: "center", fontSize: "0.8125rem", color: "var(--public-text-muted)", marginTop: "12px" }}>
+                {event.isBerbayar ? "Pembayaran dilakukan setelah pendaftaran" : "Pendaftaran gratis — tidak dipungut biaya"}
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ============ FORM SECTION ============ */}
+      <div
+        className="public-container"
+        id="form-section"
+        style={step === "wa" ? { paddingTop: "0" } : { paddingTop: "24px" }}
+      >
+        {/* Header (shown when not in 'wa' step) */}
+        {step !== "wa" && (
+          <div className="public-header">
+            <div style={{ fontSize: "0.8125rem", color: "var(--public-accent)", fontWeight: 600, marginBottom: "8px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+              {event.kementerian.nama} · Muda Juara
+            </div>
+            <h1 className="public-event-name">{event.nama}</h1>
+            <div className="public-event-meta">
+              📅 {new Date(event.tanggalMulai).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+              {event.lokasi && <> · 📍 {event.lokasi}</>}
+            </div>
+          </div>
+        )}
 
         {/* Step Indicator */}
         {step !== "selesai" && (

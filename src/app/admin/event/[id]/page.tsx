@@ -9,6 +9,7 @@ interface EventDetail {
   nama: string;
   slug: string;
   deskripsi: string | null;
+  imageUrl: string | null;
   tanggalMulai: string;
   tanggalSelesai: string;
   lokasi: string;
@@ -164,7 +165,25 @@ export default function EventDetailPage() {
       </div>
 
       {tab === "info" && (
-        <div className="info-grid animate-fade-in">
+        <div className="animate-fade-in">
+          {event.imageUrl && (
+            <div className="admin-card" style={{ marginBottom: "16px" }}>
+              <h3 className="admin-card-title" style={{ marginBottom: "12px" }}>Banner</h3>
+              <img
+                src={event.imageUrl}
+                alt={`Banner ${event.nama}`}
+                style={{
+                  width: "100%",
+                  maxHeight: "300px",
+                  objectFit: "cover",
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid var(--admin-border)",
+                }}
+              />
+            </div>
+          )}
+
+          <div className="info-grid">
           <div className="admin-card">
             <h3 className="admin-card-title" style={{ marginBottom: "16px" }}>Detail</h3>
             <div className="detail-field" style={{ marginBottom: "12px" }}>
@@ -220,6 +239,7 @@ export default function EventDetailPage() {
               )}
             </div>
           )}
+          </div>
         </div>
       )}
 

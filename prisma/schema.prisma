@@ -105,6 +105,7 @@ model Event {
   tanggalMulai   DateTime     @db.Date
   tanggalSelesai DateTime     @db.Date
   lokasi         String       @default("") @db.VarChar(200)
+  imageUrl       String?      @db.Text
   tipeAudiens    TipeAudiens  @default(KEDUANYA)
   isBerbayar     Boolean      @default(false)
   kodeProgram    String       @default("") @db.VarChar(4) // 2-digit program code for kode unik

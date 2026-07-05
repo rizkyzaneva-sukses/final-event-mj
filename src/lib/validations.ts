@@ -63,6 +63,7 @@ export const eventCreateSchema = z.object({
   tanggalSelesai: z.string().min(1, "Tanggal selesai wajib diisi"),
   lokasi: z.string().max(200).default(""),
   tipeAudiens: z.enum(["MEMBER_ONLY", "UMUM", "KEDUANYA"]).default("KEDUANYA"),
+  imageUrl: z.string().url().optional().or(z.literal("")),
   isBerbayar: z.boolean().default(false),
   kodeProgram: z.string().max(4).default(""),
 });
