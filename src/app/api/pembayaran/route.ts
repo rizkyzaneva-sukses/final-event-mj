@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { pembayaranUploadSchema } from "@/lib/validations";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
- * POST: Upload payment proof (public endpoint)
+ * POST: Upload payment proof (public endpoint, rate-limited)
  */
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, { ...RATE_LIMITS.payment, key: "payment" });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Terlalu banyak permintaan. Coba lagi nanti." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const parsed = pembayaranUploadSchema.safeParse(body);
 
@@ -34,6 +44,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Data pembayaran tidak ditemukan" },
         { status: 404 }
+      );
+    }
+
+    // Only allow updates when status is not yet verified
+    if (pembayaran.status === "TERVERIFIKASI") {
+      return NextResponse.json(
+        { error: "Pembayaran sudah diverifikasi" },
+        { status: 400 }
       );
     }
 

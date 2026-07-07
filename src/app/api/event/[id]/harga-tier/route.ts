@@ -28,7 +28,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 }
 
 /**
- * POST: Add harga tier to an event (admin only)
+ * POST: Add harga tier to an event (admin only, with ownership check)
  */
 export async function POST(request: NextRequest, { params }: Params) {
   const user = await getAuthUser();
@@ -39,10 +39,13 @@ export async function POST(request: NextRequest, { params }: Params) {
   const { id } = await params;
 
   try {
-    // Verify event exists and is berbayar
+    // Verify event exists and is berbayar, and check ownership
     const event = await prisma.event.findUnique({ where: { id } });
     if (!event) {
       return NextResponse.json({ error: "Event tidak ditemukan" }, { status: 404 });
+    }
+    if (user.role === "KEMENTERIAN" && event.kementerianId !== user.kementerianId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     if (!event.isBerbayar) {
       return NextResponse.json(

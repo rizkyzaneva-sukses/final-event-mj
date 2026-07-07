@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { registrasiCreateSchema, normalizeNoWa } from "@/lib/validations";
 import { hitungTagihan } from "@/lib/hitung-tagihan";
 import { generateKodeUnik } from "@/lib/kode-unik";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * POST: Public registration endpoint
@@ -15,6 +16,15 @@ import { generateKodeUnik } from "@/lib/kode-unik";
  */
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, { ...RATE_LIMITS.registration, key: "registration" });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Terlalu banyak pendaftaran. Coba lagi nanti." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const parsed = registrasiCreateSchema.safeParse(body);
 

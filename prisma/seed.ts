@@ -2,6 +2,11 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, RoleAdmin } from "../src/generated/prisma/client";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+
+function generateRandomPassword(length = 16): string {
+  return crypto.randomBytes(length).toString("base64url").slice(0, length);
+}
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
@@ -9,6 +14,14 @@ const prisma = new PrismaClient({
 
 async function main() {
   console.log("🌱 Seeding database...");
+
+  // Generate random password if not provided via env
+  const adminPassword = process.env.ADMIN_SEED_PASSWORD || generateRandomPassword();
+  if (!process.env.ADMIN_SEED_PASSWORD) {
+    console.log(`⚠️  No ADMIN_SEED_PASSWORD set. Generated: ${adminPassword}`);
+    console.log("   Set ADMIN_SEED_PASSWORD env var to use a custom password.\n");
+  }
+  const passwordHash = await bcrypt.hash(adminPassword, 10);
 
   const ensureHargaTier = async (
     eventId: string,
@@ -87,8 +100,6 @@ async function main() {
   console.log("✅ Kementerian seeded:", kemSDM.nama, kemPendidikan.nama, kemPorpar.nama);
 
   // === Admin Users ===
-  const passwordHash = await bcrypt.hash("admin123", 10);
-
   const adminSDM = await prisma.adminUser.upsert({
     where: { email: "sdm@mudajuara.id" },
     update: {},
@@ -314,11 +325,12 @@ async function main() {
   console.log("✅ Bendahara assigned to RAHMA");
 
   console.log("\n🎉 Seed complete!");
-  console.log("\n📋 Login credentials (dev only):");
-  console.log("   SDM:        sdm@mudajuara.id / admin123");
-  console.log("   Menkeu:     menkeu@mudajuara.id / admin123");
-  console.log("   Pendidikan: pendidikan@mudajuara.id / admin123");
-  console.log("   Bendahara:  bendahara-rahma@mudajuara.id / admin123");
+  console.log("\n📋 Login credentials:");
+  console.log(`   Password (all accounts): ${adminPassword}`);
+  console.log("   SDM:        sdm@mudajuara.id");
+  console.log("   Menkeu:     menkeu@mudajuara.id");
+  console.log("   Pendidikan: pendidikan@mudajuara.id");
+  console.log("   Bendahara:  bendahara-rahma@mudajuara.id");
 }
 
 main()

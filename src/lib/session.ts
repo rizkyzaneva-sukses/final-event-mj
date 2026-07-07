@@ -9,8 +9,19 @@ export interface SessionData {
   isLoggedIn: boolean;
 }
 
+function getPassword(): string {
+  const password = process.env.IRON_SESSION_PASSWORD;
+  if (!password || password.length < 32) {
+    throw new Error(
+      "IRON_SESSION_PASSWORD must be set and at least 32 characters. " +
+      "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
+    );
+  }
+  return password;
+}
+
 const sessionOptions = {
-  password: process.env.IRON_SESSION_PASSWORD as string,
+  get password() { return getPassword(); },
   cookieName: "event-mj-session",
   cookieOptions: {
     httpOnly: true,

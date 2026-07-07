@@ -31,8 +31,8 @@ export function generateSignature(params: SignatureParams): string {
     .join("&");
 
   return crypto
-    .createHash("sha256")
-    .update(toSign + API_SECRET)
+    .createHmac("sha256", API_SECRET)
+    .update(toSign)
     .digest("hex");
 }
 

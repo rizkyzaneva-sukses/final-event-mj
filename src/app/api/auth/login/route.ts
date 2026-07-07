@@ -3,9 +3,20 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
 import { loginSchema } from "@/lib/validations";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+
+    const rl = checkRateLimit(ip, { ...RATE_LIMITS.login, key: "login" });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Terlalu banyak percobaan. Coba lagi dalam beberapa menit." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const parsed = loginSchema.safeParse(body);
 

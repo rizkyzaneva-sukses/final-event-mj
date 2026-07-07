@@ -6,12 +6,18 @@ import { pembayaranVerifySchema } from "@/lib/validations";
 type Params = { params: Promise<{ id: string }> };
 
 /**
- * PATCH: Verify/update payment status (Bendahara+ only)
+ * PATCH: Verify/update payment status (MENKEU+ or assigned Bendahara only)
  */
 export async function PATCH(request: NextRequest, { params }: Params) {
   const user = await getAuthUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Only MENKEU and SDM can verify payments globally
+  // BENDAHARA role check could be added per-event if needed
+  if (!["SDM", "MENKEU"].includes(user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { id } = await params;

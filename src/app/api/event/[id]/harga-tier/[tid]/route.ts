@@ -11,7 +11,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { tid } = await params;
+  const { id, tid } = await params;
+
+  // Verify event ownership for KEMENTERIAN
+  if (user.role === "KEMENTERIAN") {
+    const event = await prisma.event.findUnique({ where: { id } });
+    if (!event || event.kementerianId !== user.kementerianId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
 
   try {
     const body = await request.json();
@@ -45,7 +53,15 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { tid } = await params;
+  const { id, tid } = await params;
+
+  // Verify event ownership for KEMENTERIAN
+  if (user.role === "KEMENTERIAN") {
+    const event = await prisma.event.findUnique({ where: { id } });
+    if (!event || event.kementerianId !== user.kementerianId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
 
   try {
     await prisma.hargaTier.delete({ where: { id: tid } });

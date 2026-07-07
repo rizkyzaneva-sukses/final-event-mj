@@ -287,7 +287,7 @@ export default function RegistrationPage() {
       content: (
         <div style={{ fontSize: "0.9375rem", color: "var(--public-text-secondary)", lineHeight: 1.7 }}>
           {event.deskripsi ? (
-            <div dangerouslySetInnerHTML={{ __html: event.deskripsi.replace(/\n/g, "<br/>") }} />
+            <div style={{ whiteSpace: "pre-line" }}>{event.deskripsi}</div>
           ) : (
             <p style={{ fontStyle: "italic", color: "var(--public-text-muted)" }}>Deskripsi event belum tersedia.</p>
           )}

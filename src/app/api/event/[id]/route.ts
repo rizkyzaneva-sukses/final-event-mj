@@ -55,7 +55,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 }
 
 /**
- * PATCH: Update event
+ * PATCH: Update event (SDM or Kementerian Admin, with ownership check)
  */
 export async function PATCH(request: NextRequest, { params }: Params) {
   const user = await getAuthUser();
@@ -66,6 +66,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const { id } = await params;
 
   try {
+    // Verify event exists and check ownership for KEMENTERIAN
+    const existingEvent = await prisma.event.findUnique({ where: { id } });
+    if (!existingEvent) {
+      return NextResponse.json({ error: "Event tidak ditemukan" }, { status: 404 });
+    }
+    if (user.role === "KEMENTERIAN" && existingEvent.kementerianId !== user.kementerianId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
     const parsed = eventUpdateSchema.safeParse(body);
 

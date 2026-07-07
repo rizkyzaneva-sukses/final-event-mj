@@ -4,7 +4,7 @@ import { normalizeNoWa } from "@/lib/validations";
 
 /**
  * Public endpoint: Lookup member by No. WA
- * Used by registration form to auto-fill data
+ * Returns only data needed for auto-filling the registration form
  */
 export async function GET(request: NextRequest) {
   try {
@@ -25,6 +25,11 @@ export async function GET(request: NextRequest) {
       include: {
         tanggungan: {
           orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            nama: true,
+            hubungan: true,
+          },
         },
       },
     });
@@ -38,17 +43,11 @@ export async function GET(request: NextRequest) {
       member: {
         id: member.id,
         nama: member.nama,
-        noWa: member.noWa,
         domisili: member.domisili,
         email: member.email,
         angkatanMj: member.angkatanMj,
         statusKeanggotaan: member.statusKeanggotaan,
-        tanggungan: member.tanggungan.map((t) => ({
-          id: t.id,
-          nama: t.nama,
-          tanggalLahir: t.tanggalLahir,
-          hubungan: t.hubungan,
-        })),
+        tanggungan: member.tanggungan,
       },
     });
   } catch (error) {

@@ -77,6 +77,16 @@ export default function AdminUsersPage() {
     finally { setSaving(false); }
   };
 
+  const handleDelete = async (userId: string) => {
+    if (!confirm("Hapus admin ini?")) return;
+    try {
+      const res = await fetch(`/api/admin-user/${userId}`, { method: "DELETE" });
+      if (res.ok) fetchData();
+    } catch {
+      setError("Gagal menghapus admin");
+    }
+  };
+
   const roleColors: Record<string, string> = {
     SDM: "badge-info",
     MENKEU: "badge-warning",
@@ -151,6 +161,7 @@ export default function AdminUsersPage() {
               <th>Kementerian</th>
               <th>Bendahara</th>
               <th>Dibuat</th>
+              <th style={{ width: "80px" }}>Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -170,6 +181,15 @@ export default function AdminUsersPage() {
                   <td>{u._count.bendaharaAssignment > 0 ? `${u._count.bendaharaAssignment} event` : "—"}</td>
                   <td style={{ fontSize: "0.8125rem", fontFamily: "var(--font-mono)", color: "var(--admin-text-muted)" }}>
                     {new Date(u.createdAt).toLocaleDateString("id-ID")}
+                  </td>
+                  <td>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      style={{ color: "var(--admin-danger)" }}
+                      onClick={() => handleDelete(u.id)}
+                    >
+                      Hapus
+                    </button>
                   </td>
                 </tr>
               ))

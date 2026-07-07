@@ -1,9 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getIronSession } from "iron-session";
 
-export function middleware(request: NextRequest) {
+const sessionOptions = {
+  get password() {
+    const pw = process.env.IRON_SESSION_PASSWORD;
+    if (!pw || pw.length < 32) throw new Error("IRON_SESSION_PASSWORD invalid");
+    return pw;
+  },
+  cookieName: "event-mj-session",
+  cookieOptions: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+  },
+};
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Admin routes require auth — check for session cookie
+  // Admin routes require validated session
   if (pathname.startsWith("/admin")) {
     const sessionCookie = request.cookies.get("event-mj-session");
     if (!sessionCookie) {
@@ -11,20 +28,28 @@ export function middleware(request: NextRequest) {
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
     }
+
+    // Validate session integrity (not just cookie presence)
+    try {
+      const cookieStore = request.cookies;
+      const session = await getIronSession<{ isLoggedIn?: boolean }>(cookieStore as never, sessionOptions);
+      if (!session.isLoggedIn) {
+        const loginUrl = new URL("/login", request.url);
+        loginUrl.searchParams.set("redirect", pathname);
+        return NextResponse.redirect(loginUrl);
+      }
+    } catch {
+      const loginUrl = new URL("/login", request.url);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
-  // Admin API routes also require auth (except public ones)
-  if (
-    pathname.startsWith("/api/") &&
-    !pathname.startsWith("/api/auth/") &&
-    !pathname.startsWith("/api/member/lookup") &&
-    !pathname.startsWith("/api/event/by-slug/") &&
-    !pathname.startsWith("/api/registrasi") &&
-    !pathname.startsWith("/api/pembayaran") &&
-    !pathname.startsWith("/api/cloudinary/")
-  ) {
-    // API auth is handled within route handlers for finer control
-    // Middleware just does basic cookie presence check
+  // API routes: add security headers, let route handlers do auth
+  if (pathname.startsWith("/api/")) {
+    const response = NextResponse.next();
+    response.headers.set("X-Content-Type-Options", "nosniff");
+    response.headers.set("X-Frame-Options", "DENY");
+    return response;
   }
 
   return NextResponse.next();
