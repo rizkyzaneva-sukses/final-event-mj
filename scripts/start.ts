@@ -32,7 +32,7 @@ async function ensureDatabaseReady() {
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       console.log(`[bootstrap] Running prisma db push (attempt ${attempt}/${maxAttempts})...`);
-      await runNodeScript([prismaCli, "db", "push"]);
+      await runNodeScript([prismaCli, "db", "push", "--accept-data-loss"]);
       console.log("[bootstrap] Database schema is ready.");
       return;
     } catch (error) {
