@@ -17,6 +17,12 @@ enum StatusKeanggotaan {
   UMUM
 }
 
+enum StatusApproval {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum HubunganTanggungan {
   PASANGAN
   ANAK
@@ -48,10 +54,14 @@ model Member {
   id                String             @id @default(uuid())
   nama              String             @db.VarChar(100)
   noWa              String             @unique @db.VarChar(20)
+  passwordHash      String?            @db.VarChar(255) // null = belum set password (auto-created)
   domisili          String             @default("") @db.VarChar(100)
   email             String?            @db.VarChar(100)
   angkatanMj        String?            @db.VarChar(20)
   statusKeanggotaan StatusKeanggotaan  @default(UMUM)
+  statusApproval    StatusApproval     @default(PENDING)
+  otpCode           String?            @db.VarChar(10)   // for password reset
+  otpExpiry         DateTime?          // OTP expiry timestamp
 
   // Relations
   tanggungan        Tanggungan[]
@@ -144,15 +154,18 @@ model HargaTier {
 }
 
 model Registrasi {
-  id        String   @id @default(uuid())
-  eventId   String
-  memberId  String
-  statusOts Boolean  @default(false)
+  id          String   @id @default(uuid())
+  eventId     String
+  memberId    String
+  statusOts   Boolean  @default(false)
+  checkinCode String   @unique @db.VarChar(36) // UUID for QR check-in
+  checkedIn   Boolean  @default(false)
+  checkedInAt DateTime?
 
   // Relations
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  member    Member   @relation(fields: [memberId], references: [id])
-  peserta   RegistrasiPeserta[]
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  member     Member   @relation(fields: [memberId], references: [id])
+  peserta    RegistrasiPeserta[]
   pembayaran Pembayaran?
 
   createdAt DateTime @default(now())
@@ -160,6 +173,7 @@ model Registrasi {
   @@unique([eventId, memberId]) // satu Member hanya bisa daftar sekali per Event
   @@index([eventId])
   @@index([memberId])
+  @@index([checkinCode])
   @@map("registrasi")
 }
 

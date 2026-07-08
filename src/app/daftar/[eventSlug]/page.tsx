@@ -75,7 +75,7 @@ export default function RegistrationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [registrationResult, setRegistrationResult] = useState<{
-    registrasi: { id: string };
+    registrasi: { id: string; checkinCode: string };
     pembayaran: { id: string; jumlahTagihan: number; kodeUnik: string } | null;
     breakdown: BreakdownItem[];
   } | null>(null);
@@ -1006,6 +1006,20 @@ export default function RegistrationPage() {
                   <div style={{ fontSize: "0.8125rem", color: "var(--public-text-muted)", marginTop: "4px" }}>
                     Kode: <span className="font-mono" style={{ fontWeight: 600 }}>{registrationResult.pembayaran.kodeUnik}</span>
                   </div>
+                </div>
+              )}
+
+              {registrationResult?.registrasi?.checkinCode && (
+                <div style={{ background: "var(--public-accent-light)", border: "2px dashed var(--public-accent)", padding: "16px", borderRadius: "var(--radius-md)", marginBottom: "20px", textAlign: "center" }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--public-accent)", fontWeight: 600, marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Kode Check-In Hari H
+                  </div>
+                  <div className="font-mono" style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--public-accent)", letterSpacing: "0.1em" }}>
+                    {registrationResult.registrasi.checkinCode.slice(0, 8)}
+                  </div>
+                  <p style={{ fontSize: "0.75rem", color: "var(--public-text-muted)", marginTop: "8px" }}>
+                    Tunjukkan kode ini ke panitia saat hari pelaksanaan
+                  </p>
                 </div>
               )}
 

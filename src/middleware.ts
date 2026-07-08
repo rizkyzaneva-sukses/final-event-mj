@@ -52,6 +52,14 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // Member routes: validate member session
+  if (pathname.startsWith("/member")) {
+    const memberCookie = request.cookies.get("member-session");
+    if (!memberCookie) {
+      return NextResponse.redirect(new URL("/login/member", request.url));
+    }
+  }
+
   return NextResponse.next();
 }
 
@@ -59,5 +67,6 @@ export const config = {
   matcher: [
     "/admin/:path*",
     "/api/:path*",
+    "/member/:path*",
   ],
 };

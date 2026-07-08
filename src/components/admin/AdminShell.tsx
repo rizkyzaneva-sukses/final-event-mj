@@ -29,6 +29,12 @@ const NAV_ITEMS = [
     roles: ["SDM"],
   },
   {
+    label: "Approval Member",
+    href: "/admin/member-approval",
+    icon: "✅",
+    roles: ["SDM"],
+  },
+  {
     label: "Kementerian",
     href: "/admin/kementerian",
     icon: "🏛️",

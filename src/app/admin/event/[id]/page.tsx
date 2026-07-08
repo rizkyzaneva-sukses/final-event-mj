@@ -27,6 +27,9 @@ interface Registration {
   id: string;
   statusOts: boolean;
   createdAt: string;
+  checkinCode: string;
+  checkedIn: boolean;
+  checkedInAt: string | null;
   member: { id: string; nama: string; noWa: string; domisili: string };
   peserta: { member: { nama: string } | null; tanggungan: { nama: string; tanggalLahir: string | null; hubungan: string } | null }[];
   pembayaran: { id: string; jumlahTagihan: number; kodeUnik: string; status: string; buktiTransferUrl: string | null; noReferensi: string | null } | null;
@@ -38,8 +41,11 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"info" | "peserta" | "pembayaran">("info");
+  const [tab, setTab] = useState<"info" | "peserta" | "pembayaran" | "absensi">("info");
   const [verifying, setVerifying] = useState<string | null>(null);
+  const [checkinInput, setCheckinInput] = useState("");
+  const [checkinLoading, setCheckinLoading] = useState(false);
+  const [checkinResult, setCheckinResult] = useState<{ ok: boolean; message: string; member?: string } | null>(null);
 
   const fetchData = useCallback(async () => {
     const [eventRes, regRes] = await Promise.all([
@@ -66,6 +72,36 @@ export default function EventDetailPage() {
       fetchData();
     } finally { setVerifying(null); }
   };
+
+  const handleCheckin = async () => {
+    if (!checkinInput.trim()) return;
+    setCheckinLoading(true);
+    setCheckinResult(null);
+    try {
+      const res = await fetch(`/api/event/${id}/checkin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ checkinCode: checkinInput.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCheckinResult({ ok: true, message: `Check-in berhasil: ${data.member.nama}`, member: data.member.nama });
+        setCheckinInput("");
+        fetchData();
+      } else if (res.status === 409) {
+        setCheckinResult({ ok: false, message: `${data.member.nama} sudah check-in sebelumnya` });
+      } else {
+        setCheckinResult({ ok: false, message: data.error || "Check-in gagal" });
+      }
+    } catch {
+      setCheckinResult({ ok: false, message: "Gagal menghubungi server" });
+    } finally {
+      setCheckinLoading(false);
+    }
+  };
+
+  const checkedInCount = registrations.filter((r) => r.checkedIn).length;
+  const totalRegistrations = registrations.length;
 
   if (loading) {
     return (
@@ -162,6 +198,7 @@ export default function EventDetailPage() {
         {event.isBerbayar && (
           <button className={`event-tab ${tab === "pembayaran" ? "active" : ""}`} onClick={() => setTab("pembayaran")}>Pembayaran</button>
         )}
+        <button className={`event-tab ${tab === "absensi" ? "active" : ""}`} onClick={() => setTab("absensi")}>Absensi ({checkedInCount}/{totalRegistrations})</button>
       </div>
 
       {tab === "info" && (
@@ -373,6 +410,97 @@ export default function EventDetailPage() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {tab === "absensi" && (
+        <div className="animate-fade-in">
+          <div className="admin-card" style={{ marginBottom: "24px", maxWidth: "480px" }}>
+            <h3 className="admin-card-title" style={{ marginBottom: "16px" }}>Check-In Manual</h3>
+            <p style={{ fontSize: "0.875rem", color: "var(--admin-text-muted)", marginBottom: "16px" }}>
+              Masukkan kode check-in dari peserta (6 digit karakter unik)
+            </p>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <input
+                className="input font-mono"
+                placeholder="Masukkan kode check-in"
+                value={checkinInput}
+                onChange={(e) => setCheckinInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCheckin()}
+                disabled={checkinLoading}
+                style={{ flex: 1 }}
+              />
+              <button
+                className="btn btn-primary"
+                onClick={handleCheckin}
+                disabled={checkinLoading || !checkinInput.trim()}
+              >
+                {checkinLoading ? "Proses..." : "Check-In"}
+              </button>
+            </div>
+            {checkinResult && (
+              <div style={{
+                marginTop: "12px",
+                padding: "12px 16px",
+                borderRadius: "var(--radius-md)",
+                fontSize: "0.875rem",
+                background: checkinResult.ok ? "var(--admin-success-bg)" : "var(--admin-danger-bg)",
+                color: checkinResult.ok ? "var(--admin-success)" : "var(--admin-danger)",
+              }}>
+                {checkinResult.message}
+              </div>
+            )}
+          </div>
+
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Pendaftar</th>
+                  <th>No. WA</th>
+                  <th>Kode Check-In</th>
+                  <th>Status</th>
+                  <th>Waktu Check-In</th>
+                </tr>
+              </thead>
+              <tbody>
+                {registrations.length === 0 ? (
+                  <tr><td colSpan={6}><div className="empty-state"><div className="empty-state-text">Belum ada pendaftar</div></div></td></tr>
+                ) : (
+                  registrations.map((reg, i) => (
+                    <tr key={reg.id}>
+                      <td>{i + 1}</td>
+                      <td style={{ fontWeight: 500 }}>{reg.member.nama}</td>
+                      <td className="font-mono" style={{ fontSize: "0.8125rem" }}>{reg.member.noWa}</td>
+                      <td>
+                        <code style={{
+                          padding: "4px 8px",
+                          background: "var(--admin-bg)",
+                          borderRadius: "var(--radius-sm)",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: "0.75rem",
+                          letterSpacing: "0.05em",
+                        }}>
+                          {reg.checkinCode.slice(0, 8)}
+                        </code>
+                      </td>
+                      <td>
+                        <span className={`badge ${reg.checkedIn ? "badge-success" : "badge-neutral"}`}>
+                          {reg.checkedIn ? "✓ Hadir" : "Belum"}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: "0.8125rem", fontFamily: "var(--font-mono)" }}>
+                        {reg.checkedInAt
+                          ? new Date(reg.checkedInAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </>

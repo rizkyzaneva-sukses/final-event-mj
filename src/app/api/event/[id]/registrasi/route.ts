@@ -31,7 +31,19 @@ export async function GET(request: NextRequest, { params }: Params) {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ registrations });
+    return NextResponse.json({
+      registrations: registrations.map((r) => ({
+        id: r.id,
+        statusOts: r.statusOts,
+        createdAt: r.createdAt,
+        checkinCode: r.checkinCode,
+        checkedIn: r.checkedIn,
+        checkedInAt: r.checkedInAt,
+        member: r.member,
+        peserta: r.peserta,
+        pembayaran: r.pembayaran,
+      })),
+    });
   } catch (error) {
     console.error("List registrations error:", error);
     return NextResponse.json(

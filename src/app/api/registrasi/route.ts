@@ -4,6 +4,7 @@ import { registrasiCreateSchema, normalizeNoWa } from "@/lib/validations";
 import { hitungTagihan } from "@/lib/hitung-tagihan";
 import { generateKodeUnik } from "@/lib/kode-unik";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
+import crypto from "crypto";
 
 /**
  * POST: Public registration endpoint
@@ -98,6 +99,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // 3. Enforce tipeAudiens + approval check
+    if (event.tipeAudiens === "MEMBER_ONLY") {
+      if (member.statusKeanggotaan !== "MEMBER") {
+        return NextResponse.json(
+          { error: "Event ini khusus member. Silakan daftar sebagai member terlebih dahulu." },
+          { status: 403 }
+        );
+      }
+      if (member.statusApproval !== "APPROVED") {
+        return NextResponse.json(
+          { error: "Akun member Anda belum disetujui. Silakan tunggu persetujuan dari SDM." },
+          { status: 403 }
+        );
+      }
+    }
+
     // Check duplicate registration
     const existingReg = await prisma.registrasi.findUnique({
       where: {
@@ -135,11 +152,13 @@ export async function POST(request: NextRequest) {
     const allTanggunganIds = [...data.tanggunganIds, ...newTanggunganIds];
 
     // 4. Create registrasi
+    const checkinCode = crypto.randomUUID();
     const registrasi = await prisma.registrasi.create({
       data: {
         eventId: event.id,
         memberId: member.id,
         statusOts: data.statusOts,
+        checkinCode,
       },
     });
 
@@ -230,6 +249,7 @@ export async function POST(request: NextRequest) {
       registrasi: {
         id: registrasi.id,
         eventId: registrasi.eventId,
+        checkinCode: registrasi.checkinCode,
         createdAt: registrasi.createdAt,
       },
       member: {
